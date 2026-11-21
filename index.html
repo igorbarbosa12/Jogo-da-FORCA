@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<!--
+  =====================================================
+  JOGO DA FORCA
+  Trabalho em dupla
+
+  Alunos:
+    - Igor Medeiros Barbosa
+    - Carlos Lohan dos Anjos Belém
+
+  Professor: Augusto Baía
+  Data: 20/11/2026
+
+  Tecnologias: HTML, CSS e JavaScript puro
+  API usada: Web Storage (localStorage) para salvar o progresso
+  =====================================================
+-->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Igor Medeiros Barbosa, Carlos Lohan dos Anjos Belém">
+  <title>Jogo da Forca</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Scripts (a ordem importa: cada arquivo usa o que foi carregado antes) -->
+  <script src="js/palavras.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/armazenamento.js" defer></script>
+  <script src="js/estado.js" defer></script>
+  <script src="js/regras.js" defer></script>
+  <script src="js/interface.js" defer></script>
+  <script src="js/main.js" defer></script>
+</head>
+<body>
+
+
+<div class="app">
+  <header>
+    <h1>Jogo da <span>Forca</span></h1>
+    <p>Descubra a palavra antes que o boneco seja enforcado!</p>
+  </header>
+
+  <!-- ===================== TELA 1: MENU ===================== -->
+  <section class="card" id="telaMenu">
+    <h2>Modo de jogo</h2>
+    <div class="segmentado" id="escolhaModo">
+      <button data-modo="1" class="ativo">👤 1 jogador</button>
+      <button data-modo="2">👥 2 jogadores</button>
+    </div>
+
+    <!-- Opções do modo 1 jogador -->
+    <div id="opcoes1">
+      <h3>Escolha o tema</h3>
+      <div class="temas" id="temasMenu"></div>
+    </div>
+
+    <!-- Opções do modo 2 jogadores -->
+    <div id="opcoes2" class="escondido">
+      <h3>Nome dos jogadores</h3>
+      <div class="linha">
+        <input id="nomeJ1" placeholder="Jogador 1" maxlength="15" autocomplete="off">
+        <input id="nomeJ2" placeholder="Jogador 2" maxlength="15" autocomplete="off">
+      </div>
+
+      <h3>Quem escolhe a palavra secreta?</h3>
+      <div class="segmentado" id="escolhaQuem">
+        <button data-quem="1" class="ativo">Jogador 1</button>
+        <button data-quem="2">Jogador 2</button>
+        <button data-quem="alternar">🔄 Alternar</button>
+      </div>
+    </div>
+
+    <button class="btn btn-principal btn-grande" id="btnJogar">Jogar ▶</button>
+
+    <details class="regras">
+      <summary>📖 Como jogar</summary>
+      <ul>
+        <li>Cada tracinho é uma letra da palavra secreta. O tema ajuda a adivinhar.</li>
+        <li>Chute uma letra por vez, clicando ou pelo teclado. Se ela existir, aparece em <strong>todas</strong> as posições.</li>
+        <li>Cada letra errada desenha uma parte do boneco. Com <strong>6 erros</strong> ele é enforcado e você perde.</li>
+        <li>Acento e Ç não importam: a letra A revela Á, Ã e Â, e a letra C revela Ç.</li>
+        <li>Chutar uma letra repetida não conta como erro.</li>
+        <li>Você pode chutar a <strong>palavra inteira</strong> a qualquer momento. Se errar, conta como 1 erro.</li>
+        <li><strong>2 jogadores:</strong> um escolhe a palavra e o outro adivinha. Se acertar, o ponto é de quem adivinhou; se o boneco for enforcado, o ponto é de quem escolheu.</li>
+      </ul>
+    </details>
+  </section>
+
+  <!-- ===================== TELA 2: PALAVRA SECRETA (2 jogadores) ===================== -->
+  <section class="card escondido" id="telaSegredo">
+    <div class="aviso">🙈 <span id="nomeAdivinha">Jogador 2</span>, não olhe a tela!</div>
+
+    <div class="topo-segredo">
+      <h2><span id="nomeEscolhe">Jogador 1</span>, escolha a palavra</h2>
+      <button class="btn-link" id="btnTrocar">🔄 Trocar quem escolhe</button>
+    </div>
+
+    <h3>Tema da palavra</h3>
+    <div class="temas" id="temasSegredo"></div>
+
+    <label for="inputPalavra">Palavra secreta</label>
+    <div class="campo-senha">
+      <input type="password" id="inputPalavra" placeholder="Ex: Pão de queijo" maxlength="25" autocomplete="off">
+      <button type="button" id="btnOlho" title="Mostrar/esconder">👁️</button>
+    </div>
+
+    <label for="inputDica">Dica (opcional)</label>
+    <input type="text" id="inputDica" placeholder="Ex: Comida mineira" maxlength="60" autocomplete="off">
+
+    <div class="erro" id="erroSegredo"></div>
+
+    <div class="botoes">
+      <button class="btn btn-secundario" id="btnVoltarSegredo">← Menu</button>
+      <button class="btn btn-principal" id="btnComecar">Começar</button>
+    </div>
+  </section>
+
+  <!-- ===================== TELA 3: JOGO ===================== -->
+  <section class="card escondido" id="telaJogo">
+    <div class="topo-jogo">
+      <button class="btn-icone" id="btnMenu" title="Voltar ao menu">←</button>
+      <div class="placar" id="placar"></div>
+      <div class="vidas" id="vidas"></div>
+    </div>
+
+    <div class="vez" id="vez"></div>
+
+    <div class="conteudo-jogo" id="areaPalavra">
+      <!-- Desenho da forca: a estrutura é fixa e o boneco aparece a cada erro -->
+      <svg class="forca" id="forca" viewBox="0 0 200 262" data-estado="normal">
+        <!-- ===== FORCA DE MADEIRA (sempre visível) ===== -->
+        <ellipse cx="78" cy="254" rx="76" ry="6" fill="rgba(0,0,0,.25)" />           <!-- sombra no chão -->
+        <rect class="madeira" x="8"  y="236" width="140" height="14" rx="3" />       <!-- base -->
+        <rect class="madeira" x="34" y="14"  width="13"  height="224" />             <!-- poste -->
+        <rect class="madeira" x="34" y="8"   width="122" height="12" rx="2" />       <!-- viga de cima -->
+        <path class="madeira" d="M47 62 L96 20 L108 20 L47 75 Z" />                  <!-- apoio diagonal -->
+        <line class="veio" x1="39" y1="40"  x2="39" y2="110" />                      <!-- veios da madeira -->
+        <line class="veio" x1="42" y1="130" x2="42" y2="210" />
+        <line class="veio" x1="60" y1="14"  x2="120" y2="14" />
+
+        <!-- ===== BONECO (tudo dentro deste grupo balança quando perde) ===== -->
+        <g id="boneco">
+          <!-- Corda: fica atrás do boneco -->
+          <line class="corda" x1="140" y1="20" x2="140" y2="76" />
+
+          <!-- 5: PERNA ESQUERDA (calça + sapato) -->
+          <g class="parte" id="parte5">
+            <line x1="134" y1="146" x2="130" y2="192" stroke="#1f2937" stroke-width="12" />
+            <ellipse cx="126" cy="196" rx="10" ry="5" fill="#451a03" />
+          </g>
+
+          <!-- 6: PERNA DIREITA -->
+          <g class="parte" id="parte6">
+            <line x1="146" y1="146" x2="150" y2="192" stroke="#1f2937" stroke-width="12" />
+            <ellipse cx="154" cy="196" rx="10" ry="5" fill="#451a03" />
+          </g>
+
+          <!-- 2: CORPO (pescoço, camisa, cinto e calça) -->
+          <g class="parte" id="parte2">
+            <rect x="135" y="72" width="10" height="13" fill="#f2c9a0" />
+            <path d="M124 90 Q125 82 135 82 L145 82 Q155 82 156 90 L154 140 L126 140 Z"
+                  fill="#2563eb" stroke="#1e40af" stroke-width="1.5" />
+            <path d="M135 82 L140 91 L145 82" stroke="#1e40af" stroke-width="1.5" fill="none" />
+            <circle cx="140" cy="102" r="1.5" fill="#1e40af" />
+            <circle cx="140" cy="116" r="1.5" fill="#1e40af" />
+            <rect x="126" y="137" width="28" height="11" rx="2" fill="#1f2937" />
+            <rect x="126" y="136" width="28" height="4" fill="#78350f" />
+            <rect x="137" y="135.5" width="6" height="5" rx="1" fill="#fbbf24" />
+          </g>
+
+          <!-- 3: BRAÇO ESQUERDO (manga + braço + mão) -->
+          <g class="parte" id="parte3">
+            <line x1="127" y1="89" x2="118" y2="111" stroke="#2563eb" stroke-width="11" stroke-linecap="round" />
+            <line x1="118" y1="111" x2="113" y2="131" stroke="#f2c9a0" stroke-width="8" stroke-linecap="round" />
+            <circle class="pele" cx="112" cy="134" r="5.5" />
+          </g>
+
+          <!-- 4: BRAÇO DIREITO -->
+          <g class="parte" id="parte4">
+            <line x1="153" y1="89" x2="162" y2="111" stroke="#2563eb" stroke-width="11" stroke-linecap="round" />
+            <line x1="162" y1="111" x2="167" y2="131" stroke="#f2c9a0" stroke-width="8" stroke-linecap="round" />
+            <circle class="pele" cx="168" cy="134" r="5.5" />
+          </g>
+
+          <!-- 1: CABEÇA (orelhas, rosto, cabelo e expressões) -->
+          <g class="parte" id="parte1">
+            <circle class="pele" cx="121" cy="57" r="4" />
+            <circle class="pele" cx="159" cy="57" r="4" />
+            <circle class="pele" cx="140" cy="55" r="19" />
+            <path d="M121 52 Q121 34 140 33 Q159 34 159 52 Q155 41 146 42 Q141 37 134 42 Q125 42 121 52 Z"
+                  fill="#3f2a1d" />
+            <!-- sobrancelhas -->
+            <path class="traco" d="M129 47 L136 46" />
+            <path class="traco" d="M144 46 L151 47" />
+
+            <!-- olhos abertos (somem quando morre) -->
+            <g class="expressao olhos-abertos">
+              <circle cx="133" cy="54" r="2.4" fill="#1f2937" />
+              <circle cx="147" cy="54" r="2.4" fill="#1f2937" />
+            </g>
+
+            <!-- boca normal -->
+            <path class="expressao so-normal traco" d="M134 65 Q140 68 146 65" />
+
+            <!-- com medo: boca aberta + gota de suor -->
+            <g class="expressao so-medo">
+              <ellipse cx="140" cy="66" rx="3.2" ry="4.2" fill="#7f1d1d" />
+              <path d="M157 41 Q154 46 157 48 Q160 46 157 41 Z" fill="#7dd3fc" />
+            </g>
+
+            <!-- morto: olhos em X + língua pra fora -->
+            <g class="expressao so-morto">
+              <path class="traco" d="M130 51 L136 57 M136 51 L130 57" />
+              <path class="traco" d="M144 51 L150 57 M150 51 L144 57" />
+              <ellipse cx="143" cy="69" rx="3" ry="4" fill="#f472b6" />
+              <path class="traco" d="M134 66 L147 66" />
+            </g>
+
+            <!-- feliz: sorriso aberto -->
+            <path class="expressao so-feliz" d="M132 62 Q140 73 148 62 Z" fill="#7f1d1d" />
+          </g>
+
+          <!-- Laço da corda: fica NA FRENTE do pescoço -->
+          <rect x="136" y="72" width="8" height="7" rx="2" fill="#b08850" />
+          <ellipse class="corda" cx="140" cy="82" rx="8" ry="3.5" />
+        </g>
+      </svg>
+
+      <div class="lado">
+        <span class="badge" id="badgeTema"></span>
+        <p class="dica" id="dica"></p>
+        <div class="palavra" id="palavra"></div>
+        <div class="erradas" id="erradas"></div>
+
+        <!-- Chutar a palavra inteira (regra clássica da forca) -->
+        <div class="chute">
+          <input id="inputChute" placeholder="Já sabe? Chute a palavra" maxlength="25" autocomplete="off">
+          <button class="btn btn-secundario" id="btnChute">Chutar</button>
+        </div>
+        <div class="msg-chute" id="msgChute">Errar o chute conta como 1 erro.</div>
+      </div>
+    </div>
+
+    <div class="teclado" id="teclado"></div>
+
+    <!-- Janela que aparece no fim da rodada -->
+    <div class="resultado escondido" id="resultado">
+      <div class="resultado-caixa">
+        <div class="resultado-emoji" id="resEmoji"></div>
+        <h2 id="resTitulo"></h2>
+        <p>A palavra era</p>
+        <div class="res-palavra" id="resPalavra"></div>
+        <p id="resTexto"></p>
+        <div class="botoes">
+          <button class="btn btn-secundario" id="btnResMenu">Menu</button>
+          <button class="btn btn-principal" id="btnProxima">Próxima ▶</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Desenvolvido por <strong>Igor Medeiros Barbosa</strong> e <strong>Carlos Lohan dos Anjos Belém</strong><br>
+    Professor Augusto Baía · 2026
+  </footer>
+</div>
+</body>
+</html>
