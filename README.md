@@ -13,6 +13,10 @@ O progresso é salvo automaticamente com a **API Web Storage (`localStorage`)**:
 
 ## ▶️ Como executar
 
+**Jogar online:** https://igorbarbosa12.github.io/Jogo-da-FORCA/
+
+Ou, para rodar no computador:
+
 1. Baixe o repositório (**Code → Download ZIP**) ou clone:
    ```bash
    git clone <link-do-repositório>
